@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Microservice</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:980px;margin:32px auto;padding:0 18px;color:#1f2937}
+h1{color:#153e75}label{display:inline-block;margin:8px 10px 8px 0}
+input,select,button{padding:8px;margin:3px}button{cursor:pointer}
+#flash_message{padding:10px 0;font-weight:bold}table{border-collapse:collapse;width:100%;margin-top:16px}
+th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}th{background:#eaf2fb}
+</style></head>
+<body>
+<h1>Product Microservice</h1><div id="flash_message" role="status">Ready</div>
+<section>
+<label>Id <input id="id" type="number"></label>
+<label>Name <input id="name" type="text"></label>
+<label>Description <input id="description" type="text"></label>
+<label>Price <input id="price" type="number" step="0.01"></label>
+<label>Available <select id="available"><option value="">Any</option><option value="true">True</option><option value="false">False</option></select></label>
+<label>Category <select id="category"><option value="">Any</option><option>Unknown</option><option>Cloths</option><option>Food</option><option>Housewares</option></select></label>
+<div><button id="search">Search</button><button id="retrieve">Retrieve</button><button id="create">Create</button><button id="update">Update</button><button id="delete">Delete</button><button id="clear">Clear</button></div>
+</section>
+<table><thead><tr><th>Id</th><th>Name</th><th>Description</th><th>Price</th><th>Available</th><th>Category</th></tr></thead><tbody id="search_results"></tbody></table>
+<script>
+const $=id=>document.getElementById(id), fields=['id','name','description','price','available','category'];
+function message(t){$('flash_message').textContent=t}
+function payload(){return {name:$('name').value,description:$('description').value,price:parseFloat($('price').value||'0'),available:$('available').value===''?true:$('available').value==='true',category:$('category').value||'Unknown'}}
+function fill(p){fields.forEach(k=>$(k).value=p[k]==null?'':String(p[k]))}
+function render(items){const b=$('search_results');b.innerHTML='';items.forEach(p=>{const tr=document.createElement('tr');tr.style.cursor='pointer';tr.onclick=()=>fill(p);[p.id,p.name,p.description,p.price,p.available,p.category].forEach(v=>{const td=document.createElement('td');td.textContent=String(v);tr.appendChild(td)});b.appendChild(tr)})}
+async function search(){const q=new URLSearchParams();if($('name').value)q.set('name',$('name').value);if($('category').value)q.set('category',$('category').value);if($('available').value)q.set('available',$('available').value);const r=await fetch('/products?'+q);const items=await r.json();render(items);if(items.length===1)fill(items[0]);message('Success')}
+$('search').onclick=search;
+$('clear').onclick=()=>{fields.forEach(k=>$(k).value='');render([]);message('Success')};
+$('retrieve').onclick=async()=>{const r=await fetch('/products/'+$('id').value);if(!r.ok){message('Product not found');return}fill(await r.json());message('Success')};
+$('create').onclick=async()=>{const r=await fetch('/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload())});const p=await r.json();if(r.ok){fill(p);message('Success');await search()}else message(p.error||'Error')};
+$('update').onclick=async()=>{const r=await fetch('/products/'+$('id').value,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload())});if(r.ok){fill(await r.json());message('Success')}else message('Product not found')};
+$('delete').onclick=async()=>{const r=await fetch('/products/'+$('id').value,{method:'DELETE'});message(r.ok?'Product has been Deleted!':'Product not found');await search()};
+search();
+</script></body></html>
